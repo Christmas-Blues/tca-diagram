@@ -6,6 +6,11 @@ import TCADiagramLib
 
 @main
 struct TCADiagram: ParsableCommand {
+  static var configuration: CommandConfiguration = .init(
+    commandName: "tca-diagram",
+    version: "0.1.1"
+  )
+
   @Option(name: .shortAndLong, help: "Root directory of swift files")
   var rootDirectory: String = "."
 
