@@ -8,8 +8,8 @@ let package = Package(
     .macOS(.v13),
   ],
   products: [
-    .library(name: "TCADiagramLib", targets: ["TCADiagramLib"]),
-    .executable(name: "TCADiagram", targets: ["TCADiagram"]),
+    .library(name: "tca-diagram-lib", targets: ["TCADiagramLib"]),
+    .executable(name: "tca-diagram", targets: ["TCADiagram"]),
   ],
   dependencies: [
     .package(url: "git@github.com:apple/swift-syntax.git", branch: "main"),
