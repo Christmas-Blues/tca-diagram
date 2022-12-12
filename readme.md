@@ -18,5 +18,12 @@ ARGUMENTS:
 OPTIONS:
   -r, --root-directory <root-directory>
                           Root directory of swift files (default: .)
+  --version               Show the version.
   -h, --help              Show help information.
+```
+
+## Release
+
+```sh
+VERSION=<version> make release
 ```
