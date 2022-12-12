@@ -20,13 +20,16 @@ struct TCADiagram: ParsableCommand {
         withIntermediateDirectories: true
       )
 
-    let files = try FileManager
+    let files = FileManager
       .default
-      .enumerator(atPath: rootDirectory)?
-      .compactMap { $0 as? String }
-      .filter { element in element.hasSuffix(".swift") }
-      .map { URL(fileURLWithPath: [rootDirectory, $0].joined(separator: "/")) }
-      .map { url in try String(contentsOf: url, encoding: .utf8) }
+      .enumerator(
+        at: .init(fileURLWithPath: rootDirectory),
+        includingPropertiesForKeys: [.nameKey],
+        options: .skipsHiddenFiles
+      )?
+      .compactMap { $0 as? URL }
+      .filter { url in url.absoluteString.hasSuffix(".swift") }
+      .compactMap { url in try? String(contentsOf: url, encoding: .utf8) }
 
     try Diagram.dump(files ?? [])
       .write(toFile: output, atomically: true, encoding: .utf8)
