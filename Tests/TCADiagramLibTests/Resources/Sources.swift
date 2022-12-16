@@ -45,5 +45,32 @@ let sources: [String] = [
   }
   enum SelfLessonDetailFilterAction: Equatable {
   }
+  """,
   """
+  public let emailSignUpReducer = EmailSignUpReducer
+    .combine(
+      AnyReducer { _ in
+        SignUpAgreement()
+      }
+      .pullback(
+        state: \\.signUpAgreement,
+        action: /EmailSignUpAction.signUpAgreement,
+        environment: { _ in }
+      ),
+      .init { state, action, environment in
+        switch action {
+        default:
+          return .none
+        }
+      }
+    )
+  """,
+  """
+  enum EmailSignUpAction {
+  }
+  extension SignUpAgreement {
+    public enum Action: Equatable {
+    }
+  }
+  """,
 ]

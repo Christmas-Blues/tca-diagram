@@ -14,6 +14,8 @@ extension SourceFileSyntax {
           optional: isOptionalPullback(node)
         )
       )
+    } else if false {
+      // TODO: predicateReducerProtocol
     } else if let name = try predicateActionDecl(node) {
       actions.insert(name)
     } else {
@@ -37,20 +39,61 @@ extension SourceFileSyntax {
   private func predicatePullbackCall(_ node: Syntax) throws -> (FunctionCallExprSyntax, String, String)? {
     if
       let node = FunctionCallExprSyntax(node),
-      let action = node.argumentList.first(where: { syntax in syntax.label?.text == "action" })?.expression,
-      let child = node.description.firstMatch(of: try Regex("\\s+(.+?)Reducer"))?[1].substring?.description,
-      let parent = "\(action)".firstMatch(of: try Regex("\\/(.+?)Action.+"))?[1].substring?.description,
-      node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback")
+      let action = node.argumentList.first(where: { syntax in syntax.label?.text == "action" })?.expression
     {
-      return (node, parent, child)
+      let child = node.description.firstMatch(of: try Regex("\\s+(.+?)Reducer"))?[1].substring?.description
+      let parent = "\(action)".firstMatch(of: try Regex("\\/(.+?)Action.+"))?[1].substring?.description
+      switch (child, parent) {
+      case (.some("Any"), .some(let parent)):
+        if
+          let child = node.description
+            .firstMatch(of: try Regex("(?s)\\s+AnyReducer\\s+\\{.+?in\\s+(.+?)\\("))?[1]
+            .substring?
+            .description,
+          node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback")
+        {
+          return (node, parent, child)
+        }
+        return .none
+
+      case (.some(let child), .some(let parent)):
+        if node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback") {
+          return (node, parent, child)
+        }
+        return .none
+
+      default:
+        return .none
+      }
     }
     return .none
   }
 
   /// `enum`으로 정의된 액션을 찾아 피쳐 이름을 가져옵니다.
   private func predicateActionDecl(_ node: Syntax) throws -> String? {
-    if let node = EnumDeclSyntax(node), node.identifier.text.hasSuffix("Action") {
-      return node.identifier.text.replacing("Action", with: "")
+    if let node = EnumDeclSyntax(node) {
+      if node.identifier.text == "Action" {
+        var parent = node.parent
+        while parent != nil {
+          if
+            let ext = ExtensionDeclSyntax(parent),
+            let name = ext.children(viewMode: .fixedUp)
+              .compactMap(SimpleTypeIdentifierSyntax.init)
+              .first?
+              .name
+              .text
+          {
+            return name
+          } else {
+            parent = parent?.parent
+          }
+        }
+        return .none
+      } else if node.identifier.text.hasSuffix("Action") {
+        return node.identifier.text.replacing("Action", with: "")
+      } else {
+        return .none
+      }
     }
     return .none
   }

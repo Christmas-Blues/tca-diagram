@@ -10,6 +10,7 @@ final class DiagramTests: XCTestCase {
     ```mermaid
     %%{ init : { "theme" : "default", "flowchart" : { "curve" : "monotoneY" }}}%%
     graph LR
+        EmailSignUp ---> SignUpAgreement
         SelfLessonDetail ---> Payment
         SelfLessonDetail -- optional --> SantaWeb
         SelfLessonDetail -- optional --> SelfLessonDetailFilter
@@ -17,6 +18,7 @@ final class DiagramTests: XCTestCase {
         Payment(Payment: 1)
         SantaWeb(SantaWeb: 1)
         SelfLessonDetailFilter(SelfLessonDetailFilter: 1)
+        SignUpAgreement(SignUpAgreement: 1)
     ```
     """
     XCTAssertEqual(result,  expected)
