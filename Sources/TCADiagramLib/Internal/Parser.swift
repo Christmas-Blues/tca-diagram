@@ -47,7 +47,7 @@ extension SourceFileSyntax {
       case (.some("Any"), .some(let parent)):
         if
           let child = node.description
-            .firstMatch(of: try Regex("(?s)\\s+AnyReducer\\s+\\{.+?in\\s+(.+?)\\("))?[1]
+            .firstMatch(of: try Regex("(?s)\\s+AnyReducer.*\\{.+?\\s+(\\w+?)\\("))?[1]
             .substring?
             .description,
           node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback")

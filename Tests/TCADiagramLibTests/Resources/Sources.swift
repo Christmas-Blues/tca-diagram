@@ -49,7 +49,7 @@ let sources: [String] = [
   """
   public let emailSignUpReducer = EmailSignUpReducer
     .combine(
-      AnyReducer { _ in
+      AnyReducer<SignUpAgreement.State, SignUpAgreement.Action, Void> { _ in
         SignUpAgreement()
       }
       .pullback(
