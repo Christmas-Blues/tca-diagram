@@ -31,6 +31,18 @@ extension SourceFileSyntax {
 }
 
 extension SourceFileSyntax {
+
+  /// ReducerProtocol을 상속한 부분을 찾아 부모 피쳐 이름을 가져옵니다.
+  private func predicateReducerProtocol(_ node: Syntax) throws -> String? {
+    if
+      let node = StructDeclSyntax(node),
+      node.inheritanceClause?.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ReducerProtocol") }) == true
+    {
+      return node.identifier.text
+    }
+    return nil
+  }
+
   /// pullback 함수 호출이 있는 부분을 찾아 부모, 자식 피쳐 이름을 가져옵니다.
   ///
   /// 1. pullback 호출 부분을 찾습니다(코드 상으로는 마지막 컨디션입니다. 파라미터를 먼저 보는게 속도 측면에서 유리할 것 같아서).
