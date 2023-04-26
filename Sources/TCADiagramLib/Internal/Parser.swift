@@ -6,6 +6,11 @@ extension SourceFileSyntax {
     actions: inout Set<String>,
     relations: inout [Relation]
   ) throws {
+
+    if let reducerProtocolParent = try predicateReducerProtocol(node) {
+      try travel(parent: reducerProtocolParent, node: node, actions: &actions, relations: &relations)
+    }
+
     if let (node, parent, child) = try predicatePullbackCall(node) {
       relations.append(
         .init(
@@ -14,13 +19,43 @@ extension SourceFileSyntax {
           optional: isOptionalPullback(node)
         )
       )
-    } else if false {
-      // TODO: predicateReducerProtocol
     } else if let name = try predicateActionDecl(node) {
       actions.insert(name)
     } else {
       for child in node.children(viewMode: .all) {
         try travel(
+          node: child,
+          actions: &actions,
+          relations: &relations
+        )
+      }
+    }
+  }
+
+  /// ReducerProtocol이 선언된 파일에서 child를 가져옵니다.
+  ///
+  /// pullback과는 다르게 ReducerProtocol의 Scope나 ifLet에서는 부모피쳐 이름을 찾을수가 없습니다.
+  /// Reducer 선언부에서 찾은 부모 이름을 유지하면서 자식 피쳐들을 찾아나갑니다.
+  func travel(
+    parent: String,
+    node: Syntax,
+    actions: inout Set<String>,
+    relations: inout [Relation]
+  ) throws {
+    if let (childs, isOptional) = try predicateChildReducerProtocol(node) {
+      childs.forEach { child in
+        relations.append(
+          .init(
+            parent: parent,
+            child: child.firstUppercased,
+            optional: isOptional
+          )
+        )
+      }
+    } else {
+      for child in node.children(viewMode: .all) {
+        try travel(
+          parent: parent,
           node: child,
           actions: &actions,
           relations: &relations
