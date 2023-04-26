@@ -43,6 +43,39 @@ extension SourceFileSyntax {
     return nil
   }
 
+  /// Scope 또는 ifLet 호출을 찾아 자식 피쳐 이름을 가져옵니다.
+  private func predicateChildReducerProtocol(_ node: Syntax) throws -> ([String], Bool)? {
+    if
+      let node = FunctionCallExprSyntax(node),
+      node.argumentList.contains(where: { syntax in syntax.label?.text == "action" })
+    {
+      if
+        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("Scope") }),
+        let child = node.trailingClosure?.statements.first?.description
+          .firstMatch(of: try Regex("\\s*(.+?)\\(\\)"))?[1]
+          .substring?
+          .description {
+        return ([child], false)
+      }
+
+      // ifLet은 method chaining으로 연달아서 붙어있기 때문에
+      // 매칭되는 모든 리듀서 이름들을 가져와 child 에 저장합니다.
+      if
+        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") }) {
+        let childs = node.description
+          .matches(of: try Regex("ifLet.+{\\s+(.+?)\\(\\)"))
+          .compactMap {
+            $0[1].substring?.description
+          }
+          .filter {
+            $0 != "EmptyReducer"
+          }
+        return (childs, true)
+      }
+    }
+    return .none
+  }
+
   /// pullback 함수 호출이 있는 부분을 찾아 부모, 자식 피쳐 이름을 가져옵니다.
   ///
   /// 1. pullback 호출 부분을 찾습니다(코드 상으로는 마지막 컨디션입니다. 파라미터를 먼저 보는게 속도 측면에서 유리할 것 같아서).
