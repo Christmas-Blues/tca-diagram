@@ -6,6 +6,11 @@ extension SourceFileSyntax {
     actions: inout Set<String>,
     relations: inout [Relation]
   ) throws {
+
+    if let reducerProtocolParent = try predicateReducerProtocol(node) {
+      try travel(parent: reducerProtocolParent, node: node, actions: &actions, relations: &relations)
+    }
+
     if let (node, parent, child) = try predicatePullbackCall(node) {
       relations.append(
         .init(
@@ -14,8 +19,6 @@ extension SourceFileSyntax {
           optional: isOptionalPullback(node)
         )
       )
-    } else if false {
-      // TODO: predicateReducerProtocol
     } else if let name = try predicateActionDecl(node) {
       actions.insert(name)
     } else {
@@ -28,9 +31,86 @@ extension SourceFileSyntax {
       }
     }
   }
+
+  /// ReducerProtocol이 선언된 파일에서 child를 가져옵니다.
+  ///
+  /// pullback과는 다르게 ReducerProtocol의 Scope나 ifLet에서는 부모피쳐 이름을 찾을수가 없습니다.
+  /// Reducer 선언부에서 찾은 부모 이름을 유지하면서 자식 피쳐들을 찾아나갑니다.
+  func travel(
+    parent: String,
+    node: Syntax,
+    actions: inout Set<String>,
+    relations: inout [Relation]
+  ) throws {
+    if let (childs, isOptional) = try predicateChildReducerProtocol(node) {
+      childs.forEach { child in
+        relations.append(
+          .init(
+            parent: parent,
+            child: child.firstUppercased,
+            optional: isOptional
+          )
+        )
+      }
+    } else {
+      for child in node.children(viewMode: .all) {
+        try travel(
+          parent: parent,
+          node: child,
+          actions: &actions,
+          relations: &relations
+        )
+      }
+    }
+  }
 }
 
 extension SourceFileSyntax {
+
+  /// ReducerProtocol을 상속한 부분을 찾아 부모 피쳐 이름을 가져옵니다.
+  private func predicateReducerProtocol(_ node: Syntax) throws -> String? {
+    if
+      let node = StructDeclSyntax(node),
+      node.inheritanceClause?.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ReducerProtocol") }) == true
+    {
+      return node.identifier.text
+    }
+    return nil
+  }
+
+  /// Scope 또는 ifLet 호출을 찾아 자식 피쳐 이름을 가져옵니다.
+  private func predicateChildReducerProtocol(_ node: Syntax) throws -> ([String], Bool)? {
+    if
+      let node = FunctionCallExprSyntax(node),
+      node.argumentList.contains(where: { syntax in syntax.label?.text == "action" })
+    {
+      if
+        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("Scope") }),
+        let child = node.trailingClosure?.statements.first?.description
+          .firstMatch(of: try Regex("\\s*(.+?)\\(\\)"))?[1]
+          .substring?
+          .description {
+        return ([child], false)
+      }
+
+      // ifLet은 method chaining으로 연달아서 붙어있기 때문에
+      // 매칭되는 모든 리듀서 이름들을 가져와 child 에 저장합니다.
+      if
+        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") }) {
+        let childs = node.description
+          .matches(of: try Regex("ifLet.+{\\s+(.+?)\\(\\)"))
+          .compactMap {
+            $0[1].substring?.description
+          }
+          .filter {
+            $0 != "EmptyReducer"
+          }
+        return (childs, true)
+      }
+    }
+    return .none
+  }
+
   /// pullback 함수 호출이 있는 부분을 찾아 부모, 자식 피쳐 이름을 가져옵니다.
   ///
   /// 1. pullback 호출 부분을 찾습니다(코드 상으로는 마지막 컨디션입니다. 파라미터를 먼저 보는게 속도 측면에서 유리할 것 같아서).
