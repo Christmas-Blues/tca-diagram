@@ -8,7 +8,7 @@ import TCADiagramLib
 struct TCADiagram: ParsableCommand {
   static var configuration: CommandConfiguration = .init(
     commandName: "tca-diagram",
-    version: "0.2.0"
+    version: "0.3.0"
   )
 
   @Option(name: .shortAndLong, help: "Root directory of swift files")
