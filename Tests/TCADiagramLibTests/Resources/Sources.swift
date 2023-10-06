@@ -137,3 +137,66 @@ let reducerProtocolSampleSource: [String] = [
   }
   """
 ]
+
+let reducerSampleSource: [String] = [
+  """
+  public struct SelfLessonDetail: Reducer {
+    @Dependency(\\.environmentSelfLessonDetail) private var environment
+
+    public init() {}
+
+    public var body: some Reducer<State, Action> {
+      BindingReducer()
+      Scope(state: \\State.payment, action: /Action.payment) {
+        Payment()
+      }
+
+      Scope(state: \\.subState, action: .self) {
+        Scope(
+          state: /State.SubState.promotionWeb,
+          action: /Action.promotionWeb
+        ) {
+          DoubleScopeChild()
+        }
+      }
+
+      Reduce { state, action in
+        switch action {
+          case default:
+            return .none
+        }
+      }
+      .ifLet(\\.filter, action: /Action.filter) {
+        SelfLessonDetailFilter()
+      }
+      .ifLet(\\.selection, action: /Action.web) {
+        SantaWeb()
+      }
+      .ifLet(\\SelfLessonDetail.State.selection, action: /SelfLessonDetail.Action.webView) {
+        EmptyReducer()
+          .ifLet(\\Identified.value, action: .self) {
+            DoubleIfLetChild()
+          }
+      }
+    }
+  }
+  """,
+  """
+  extension SelfLessonDetail {
+    public enum Action: Equatable {
+    }
+  }
+  extension Payment {
+    public enum Action: Equatable {
+    }
+  }
+  extension SantaWeb {
+    public enum Action: Equatable {
+    }
+  }
+  extension SelfLessonDetailFilter {
+    public enum Action: Equatable {
+    }
+  }
+  """
+]

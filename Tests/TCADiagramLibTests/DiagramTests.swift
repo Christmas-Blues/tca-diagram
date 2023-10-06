@@ -45,4 +45,26 @@ final class DiagramTests: XCTestCase {
     """
     XCTAssertEqual(result, expected)
   }
+
+  func testReducerExample() throws {
+    let result = try Diagram.dump(reducerSampleSource)
+    let expected = """
+    ```mermaid
+    %%{ init : { "theme" : "default", "flowchart" : { "curve" : "monotoneY" }}}%%
+    graph LR
+        SelfLessonDetail -- optional --> DoubleIfLetChild
+        SelfLessonDetail ---> DoubleScopeChild
+        SelfLessonDetail ---> Payment
+        SelfLessonDetail -- optional --> SantaWeb
+        SelfLessonDetail -- optional --> SelfLessonDetailFilter
+
+        DoubleIfLetChild(DoubleIfLetChild: 1)
+        DoubleScopeChild(DoubleScopeChild: 1)
+        Payment(Payment: 1)
+        SantaWeb(SantaWeb: 1)
+        SelfLessonDetailFilter(SelfLessonDetailFilter: 1)
+    ```
+    """
+    XCTAssertEqual(result, expected)
+  }
 }
