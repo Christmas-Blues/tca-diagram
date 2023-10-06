@@ -71,7 +71,11 @@ extension SourceFileSyntax {
   private func predicateReducerProtocol(_ node: Syntax) throws -> String? {
     if
       let node = StructDeclSyntax(node),
-      node.inheritanceClause?.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ReducerProtocol") }) == true
+      node.inheritanceClause?.tokens(viewMode: .fixedUp)
+        .contains(where: {
+          $0.tokenKind == .identifier("ReducerProtocol")
+          || $0.tokenKind == .identifier("Reducer")
+        }) == true
     {
       return node.identifier.text
     }
