@@ -70,3 +70,4 @@ VERSION=<version> make release
 - [x] ~~optionals~~
 - [x] ~~ifLet~~
 - [ ] functions inside `extension Reducer {...}` isn't parsed.
+- [ ] case paths like `.ifLet(\.$destination, action: \.destination) {`
