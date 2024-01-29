@@ -67,17 +67,32 @@ extension SourceFileSyntax {
 
 extension SourceFileSyntax {
 
-  /// Get parent name from feature with superclass of ReducerProtocol
+  /// Get parent name from feature.
   private func predicateReducerProtocol(_ node: Syntax) throws -> String? {
     if
-      let node = StructDeclSyntax(node),
-      node.inheritanceClause?.tokens(viewMode: .fixedUp)
-        .contains(where: {
-          $0.tokenKind == .identifier("ReducerProtocol")
-          || $0.tokenKind == .identifier("Reducer")
-        }) == true
+      let node = StructDeclSyntax(node)
     {
-      return node.identifier.text
+      /// Has @Reducer macro
+      if
+        node.attributes?.contains(where: { element in
+          element.tokens(viewMode: .fixedUp).contains { el in
+            el.tokenKind == .identifier("Reducer")
+          }
+        }) == true
+      {
+        debugPrint(node.identifier.text)
+        return node.identifier.text
+      }
+      /// superclass of ReducerProtocol or Reducer
+      if
+        node.inheritanceClause?.tokens(viewMode: .fixedUp)
+          .contains(where: {
+            $0.tokenKind == .identifier("ReducerProtocol")
+              || $0.tokenKind == .identifier("Reducer")
+          }) == true
+      {
+        return node.identifier.text
+      }
     }
     return nil
   }
@@ -93,7 +108,8 @@ extension SourceFileSyntax {
         let child = node.trailingClosure?.statements.first?.description
           .firstMatch(of: try Regex("\\s*(.+?)\\(\\)"))?[1]
           .substring?
-          .description {
+          .description
+      {
         return ([child], false)
       }
 
@@ -186,7 +202,7 @@ extension SourceFileSyntax {
   /// check if `pullback` chains `optional()`.
   private func isOptionalPullback(_ node: FunctionCallExprSyntax) -> Bool {
     var stack: [Syntax] = node.children(viewMode: .fixedUp).reversed()
-    while(!stack.isEmpty) {
+    while !stack.isEmpty {
       let node = stack.removeFirst()
       if
         let node = FunctionCallExprSyntax(node),
