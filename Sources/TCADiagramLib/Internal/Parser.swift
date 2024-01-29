@@ -42,8 +42,8 @@ extension SourceFileSyntax {
     actions: inout Set<String>,
     relations: inout [Relation]
   ) throws {
-    if let (childs, isOptional) = try predicateChildReducerProtocol(node) {
-      childs.forEach { child in
+    if let (children, isOptional) = try predicateChildReducerProtocol(node) {
+      children.forEach { child in
         relations.append(
           .init(
             parent: parent,
@@ -100,8 +100,9 @@ extension SourceFileSyntax {
       // ifLet can be in "method chaining"
       // therefore find all reducer names that match and save in child
       if
-        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") }) {
-        let childs = node.description
+        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") })
+      {
+        let children = node.description
           .matches(of: try Regex("ifLet.+{\\s+(.+?)\\(\\)"))
           .compactMap {
             $0[1].substring?.description
@@ -109,7 +110,7 @@ extension SourceFileSyntax {
           .filter {
             $0 != "EmptyReducer"
           }
-        return (childs, true)
+        return (children, true)
       }
     }
     return .none
