@@ -21,7 +21,7 @@ final class DiagramTests: XCTestCase {
         SignUpAgreement(SignUpAgreement: 1)
     ```
     """
-    XCTAssertEqual(result,  expected)
+    XCTAssertEqual(result, expected)
   }
 
   func testReducerProtocolExample() throws {
