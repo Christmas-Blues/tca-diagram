@@ -32,10 +32,10 @@ extension SourceFileSyntax {
     }
   }
 
-  /// ReducerProtocol이 선언된 파일에서 child를 가져옵니다.
+  /// Get child from file with ReducerProtocol
   ///
-  /// pullback과는 다르게 ReducerProtocol의 Scope나 ifLet에서는 부모피쳐 이름을 찾을수가 없습니다.
-  /// Reducer 선언부에서 찾은 부모 이름을 유지하면서 자식 피쳐들을 찾아나갑니다.
+  /// unlike pullbacks, Scope and ifLet can't find parent's name.
+  /// Iterates through the children while keeping the parent name found in Reducer.
   func travel(
     parent: String,
     node: Syntax,
@@ -67,7 +67,7 @@ extension SourceFileSyntax {
 
 extension SourceFileSyntax {
 
-  /// ReducerProtocol을 상속한 부분을 찾아 부모 피쳐 이름을 가져옵니다.
+  /// Get parent name from feature with superclass of ReducerProtocol
   private func predicateReducerProtocol(_ node: Syntax) throws -> String? {
     if
       let node = StructDeclSyntax(node),
@@ -82,7 +82,7 @@ extension SourceFileSyntax {
     return nil
   }
 
-  /// Scope 또는 ifLet 호출을 찾아 자식 피쳐 이름을 가져옵니다.
+  /// Get child feature name by looking for Scope or ifLet calls.
   private func predicateChildReducerProtocol(_ node: Syntax) throws -> ([String], Bool)? {
     if
       let node = FunctionCallExprSyntax(node),
@@ -97,8 +97,8 @@ extension SourceFileSyntax {
         return ([child], false)
       }
 
-      // ifLet은 method chaining으로 연달아서 붙어있기 때문에
-      // 매칭되는 모든 리듀서 이름들을 가져와 child 에 저장합니다.
+      // ifLet can be in "method chaining"
+      // therefore find all reducer names that match and save in child
       if
         node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") }) {
         let childs = node.description
@@ -115,11 +115,11 @@ extension SourceFileSyntax {
     return .none
   }
 
-  /// pullback 함수 호출이 있는 부분을 찾아 부모, 자식 피쳐 이름을 가져옵니다.
+  /// Find pullback calls and get parent, child feature names.
   ///
-  /// 1. pullback 호출 부분을 찾습니다(코드 상으로는 마지막 컨디션입니다. 파라미터를 먼저 보는게 속도 측면에서 유리할 것 같아서).
-  /// 1. 해당 코드 블럭의 첫부분은 Reducer일 것이고(reducler.pullback을 한 것이니), 그 리듀서 이름을 child로 저장합니다.
-  /// 1. 그리고 pullback의 action 파라미터를 보면 부모의 액션이 포함되어 있으므로, 그 액션의 이름을 parent로 저장합니다.
+  /// 1. Find pullback calls (last condition in code. looking for parameters probably would be faster to find)
+  /// 2. Code block should start with Reducer (probably reducler.pullback), save the reducer name as child.
+  /// 3. pullback action parameter should hold the parent's name, so save it as parent.
   private func predicatePullbackCall(_ node: Syntax) throws -> (FunctionCallExprSyntax, String, String)? {
     if
       let node = FunctionCallExprSyntax(node),
@@ -153,7 +153,7 @@ extension SourceFileSyntax {
     return .none
   }
 
-  /// `enum`으로 정의된 액션을 찾아 피쳐 이름을 가져옵니다.
+  /// parse `enum` Action for feature name.
   private func predicateActionDecl(_ node: Syntax) throws -> String? {
     if let node = EnumDeclSyntax(node) {
       if node.identifier.text == "Action" {
@@ -182,7 +182,7 @@ extension SourceFileSyntax {
     return .none
   }
 
-  /// `pullback` 호출할 때 `optional()`을 함께 호출하는지 여부를 반환합니다.
+  /// check if `pullback` chains `optional()`.
   private func isOptionalPullback(_ node: FunctionCallExprSyntax) -> Bool {
     var stack: [Syntax] = node.children(viewMode: .fixedUp).reversed()
     while(!stack.isEmpty) {
