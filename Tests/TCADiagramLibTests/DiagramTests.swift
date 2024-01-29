@@ -21,7 +21,7 @@ final class DiagramTests: XCTestCase {
         SignUpAgreement(SignUpAgreement: 1)
     ```
     """
-    XCTAssertEqual(result,  expected)
+    XCTAssertEqual(result, expected)
   }
 
   func testReducerProtocolExample() throws {
@@ -61,6 +61,26 @@ final class DiagramTests: XCTestCase {
         DoubleIfLetChild(DoubleIfLetChild: 1)
         DoubleScopeChild(DoubleScopeChild: 1)
         Payment(Payment: 1)
+        SantaWeb(SantaWeb: 1)
+        SelfLessonDetailFilter(SelfLessonDetailFilter: 1)
+    ```
+    """
+    XCTAssertEqual(result, expected)
+  }
+
+  func testReducerExtensionExample() throws {
+    let result = try Diagram.dump(reducerExtensionSampleSource)
+    let expected = """
+    ```mermaid
+    %%{ init : { "theme" : "default", "flowchart" : { "curve" : "monotoneY" }}}%%
+    graph LR
+        SelfLessonDetail -- optional --> DoubleIfLetChild
+        SelfLessonDetail ---> DoubleScopeChild
+        SelfLessonDetail ---> Payment
+        SelfLessonDetail -- optional --> SantaWeb
+        SelfLessonDetail -- optional --> SelfLessonDetailFilter
+
+        DoubleIfLetChild(DoubleIfLetChild: 1)
         SantaWeb(SantaWeb: 1)
         SelfLessonDetailFilter(SelfLessonDetailFilter: 1)
     ```

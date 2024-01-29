@@ -200,3 +200,66 @@ let reducerSampleSource: [String] = [
   }
   """
 ]
+
+let reducerExtensionSampleSource: [String] = [
+  """
+  public struct SelfLessonDetail: Reducer {
+    @Dependency(\\.environmentSelfLessonDetail) private var environment
+
+    public init() {}
+
+    public var body: some Reducer<State, Action> {
+      BindingReducer()
+
+      Reduce { state, action in
+        switch action {
+          case default:
+            return .none
+        }
+      }
+      .more1()
+      .more2()
+    }
+  }
+  """,
+  """
+  extension SelfLessonDetail {
+    public enum Action: Equatable {
+    }
+  }
+  extension Payment {
+    public enum Action: Equatable {
+    }
+  }
+  extension SantaWeb {
+    public enum Action: Equatable {
+    }
+  }
+  extension SelfLessonDetailFilter {
+    public enum Action: Equatable {
+    }
+  }
+  extension Reducer where State == SelfLessonDetailFilter.State, Action == SelfLessonDetailFilter.Action {
+    func more1() -> some ReducerOf<Self> {
+      self
+        .ifLet(\\.filter, action: /Action.filter) {
+          SelfLessonDetailFilter()
+        }
+        .ifLet(\\.selection, action: /Action.web) {
+          SantaWeb()
+        }
+    }
+
+    func more2() -> some ReducerOf<Self> {
+      self
+        .ifLet(\\SelfLessonDetail.State.selection, action: /SelfLessonDetail.Action.webView) {
+          EmptyReducer()
+            .ifLet(\\Identified.value, action: .self) {
+              DoubleIfLetChild()
+            }
+        }
+    }
+  }
+
+  """
+]
