@@ -264,3 +264,55 @@ let reducerMacroSampleSource: [String] = [
   }
   """
 ]
+
+let reducerWithExtensionSampleSource: [String] = [
+  """
+  @Reducer
+  public struct SelfLessonDetail {
+    @Dependency(\\.environmentSelfLessonDetail) private var environment
+
+    public init() {}
+
+    public var body: some Reducer<State, Action> {
+      BindingReducer()
+      Scope(state: \\State.payment, action: /Action.payment) {
+        Payment()
+      }
+
+      Scope(state: \\.subState, action: .self) {
+        Scope(
+          state: /State.SubState.promotionWeb,
+          action: /Action.promotionWeb
+        ) {
+          DoubleScopeChild()
+        }
+      }
+
+      Reduce { state, action in
+        switch action {
+          case default:
+            return .none
+        }
+      }
+
+      .subFeatures1()
+    }
+  }
+  extension Reducer where State == SelfLessonDetail.State, Action == SelfLessonDetail.Action {
+    func subFeatures1() -> some ReducerOf<Self> {
+      .ifLet(\\.filter, action: \\.filter) {
+        SelfLessonDetailFilter()
+      }
+      .ifLet(\\.selection, action: \\.web) {
+        SantaWeb()
+      }
+      .ifLet(\\SelfLessonDetail.State.selection, action: /SelfLessonDetail.Action.webView) {
+        EmptyReducer()
+          .ifLet(\\Identified.value, action: .self) {
+            DoubleIfLetChild()
+          }
+      }
+    }
+  }
+  """
+]
