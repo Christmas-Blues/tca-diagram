@@ -169,7 +169,7 @@ let reducerSampleSource: [String] = [
       .ifLet(\\.filter, action: /Action.filter) {
         SelfLessonDetailFilter()
       }
-      .ifLet(\\.$selection, action: /Action.web) {
+      .ifLet(\\.$selection, action: \\.web) {
         SantaWeb()
       }
       .ifLet(\\SelfLessonDetail.State.selection, action: /SelfLessonDetail.Action.webView) {
