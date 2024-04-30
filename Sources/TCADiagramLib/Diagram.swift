@@ -13,7 +13,12 @@ public enum Diagram {
     try sources.enumerated().forEach { index, source in
       print("Parsing... (\(index + 1)/\(sources.count))")
       let root: SourceFileSyntax = Parser.parse(source: source)
-      let reducer = root.description.firstMatch(of: try Regex("Reducer\n.*struct (.*) {"))?[1].substring?.description ?? ""
+      var reducer = root.description.firstMatch(of: try Regex("Reducer\n.*struct (.*) {"))?[1].substring?
+        .description ?? ""
+      if reducer == "" {
+        reducer = root.description.firstMatch(of: try Regex("\\s+struct (.+?): Reducer"))?[1].substring?
+          .description ?? ""
+      }
       try root.travel(reducer: reducer, node: Syntax(root), actions: &actions, relations: &relations)
     }
 
