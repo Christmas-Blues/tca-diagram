@@ -6,10 +6,10 @@ import SwiftParser
 public enum Diagram {
   public static func dump(_ sources: [String]) throws -> String {
     var relations: [Relation] = []         // Parent ---> Child
-    var actions: Set<String> = []          // 파일에 존재하는 모든 Action 이름
-    var pullbackCount: [String: Int] = [:] // 액션이름: pullback count
+    var actions: Set<String> = []          // All Action names in file
+    var pullbackCount: [String: Int] = [:] // [Action name: pullback count]
 
-    // 각 소스 파일을 순회하여 actions, relations를 채웁니다.
+    // go through all files and fill in actions and relations.
     try sources.enumerated().forEach { index, source in
       print("Parsing... (\(index + 1)/\(sources.count))")
       let root: SourceFileSyntax = Parser.parse(source: source)
@@ -42,15 +42,15 @@ public enum Diagram {
   ) -> String {
     relations
       .sorted(
-        // parent 먼저 정렬 후 child를 정렬합니다.
+        // order parent first, then child.
         using: [
           KeyPathComparator(\.parent, order: .forward),
           KeyPathComparator(\.child, order: .forward),
         ]
       )
       .map { (relation: Relation) -> Relation in
-        // AITutor, aiTutor, AiTutor와 같은 문제를 해결하기 위해
-        // 실제 정의된 Action 이름에서 같은 이름이 있다면 Action 이름으로 대체합니다.
+        // to fix case problems like AITutor, aiTutor, AiTutor,
+        // if there is defined Action, use that name.
         if let action = actions.first(where: { action in action.lowercased() == relation.child.lowercased() }) {
           pullbackCount[action] = (pullbackCount[action] ?? 0) + 1
           return Relation(
