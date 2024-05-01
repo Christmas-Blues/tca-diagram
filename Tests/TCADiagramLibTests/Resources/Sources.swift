@@ -267,8 +267,7 @@ let reducerMacroSampleSource: [String] = [
 
 let reducerWithExtensionSampleSource: [String] = [
   """
-  @Reducer
-  public struct SelfLessonDetail {
+  public struct SelfLessonDetail: Reducer {
     @Dependency(\\.environmentSelfLessonDetail) private var environment
 
     public init() {}
