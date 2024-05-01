@@ -1,12 +1,12 @@
 import Foundation
 
-import SwiftSyntax
 import SwiftParser
+import SwiftSyntax
 
 public enum Diagram {
   public static func dump(_ sources: [String]) throws -> String {
-    var relations: [Relation] = []         // Parent ---> Child
-    var actions: Set<String> = []          // All Action names in file
+    var relations: [Relation] = [] // Parent ---> Child
+    var actions: Set<String> = [] // All Action names in file
     var pullbackCount: [String: Int] = [:] // [Action name: pullback count]
 
     // go through all files and fill in actions and relations.
@@ -22,18 +22,17 @@ public enum Diagram {
       try root.travel(reducer: reducer, node: Syntax(root), actions: &actions, relations: &relations)
     }
 
-    return Array
-      .init(
-        [
-          "```mermaid",
-          Self.mermaidHeader,
-          Self.relationSection(relations: relations, actions: actions, pullbackCount: &pullbackCount),
-          "",
-          Self.idSection(pullbackCount: pullbackCount),
-          "```"
-        ]
-      )
-      .joined(separator: "\n")
+    return Array(
+      [
+        "```mermaid",
+        Self.mermaidHeader,
+        Self.relationSection(relations: relations, actions: actions, pullbackCount: &pullbackCount),
+        "",
+        Self.idSection(pullbackCount: pullbackCount),
+        "```"
+      ]
+    )
+    .joined(separator: "\n")
   }
 
   private static let mermaidHeader = """
@@ -81,7 +80,7 @@ public enum Diagram {
   ) -> String {
     pullbackCount
       .sorted(by: { $0.0 < $1.0 })
-      .map { (key, value) in "\(key)(\(key): \(value))".indent }
+      .map { key, value in "\(key)(\(key): \(value))".indent }
       .joined(separator: "\n")
   }
 }
