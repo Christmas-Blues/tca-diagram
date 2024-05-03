@@ -2,11 +2,11 @@ import SwiftSyntax
 
 extension SourceFileSyntax {
   func travel(
+    reducer: String = "",
     node: Syntax,
     actions: inout Set<String>,
     relations: inout [Relation]
   ) throws {
-
     if let reducerProtocolParent = try predicateReducerProtocol(node) {
       try travel(parent: reducerProtocolParent, node: node, actions: &actions, relations: &relations)
     }
@@ -22,12 +22,23 @@ extension SourceFileSyntax {
     } else if let name = try predicateActionDecl(node) {
       actions.insert(name)
     } else {
-      for child in node.children(viewMode: .all) {
-        try travel(
-          node: child,
-          actions: &actions,
-          relations: &relations
-        )
+      if reducer.isEmpty {
+        for child in node.children(viewMode: .all) {
+          try travel(
+            node: child,
+            actions: &actions,
+            relations: &relations
+          )
+        }
+      } else {
+        for child in node.children(viewMode: .all) {
+          try travel(
+            parent: reducer,
+            node: child,
+            actions: &actions,
+            relations: &relations
+          )
+        }
       }
     }
   }
@@ -42,7 +53,17 @@ extension SourceFileSyntax {
     actions: inout Set<String>,
     relations: inout [Relation]
   ) throws {
-    if let (children, isOptional) = try predicateChildReducerProtocol(node) {
+    if let children = try predicateIfLetDecl(node) {
+      children.forEach { child in
+        relations.append(
+          .init(
+            parent: parent,
+            child: child.firstUppercased,
+            optional: true
+          )
+        )
+      }
+    } else if let (children, isOptional) = try predicateChildReducerProtocol(node) {
       children.forEach { child in
         relations.append(
           .init(
@@ -66,7 +87,6 @@ extension SourceFileSyntax {
 }
 
 extension SourceFileSyntax {
-
   /// Get parent name from feature.
   private func predicateReducerProtocol(_ node: Syntax) throws -> String? {
     if
@@ -74,14 +94,14 @@ extension SourceFileSyntax {
     {
       /// Has @Reducer macro
       if
-        node.attributes?.contains(where: { element in
+        node.attributes.contains(where: { element in
           element.tokens(viewMode: .fixedUp).contains { el in
             el.tokenKind == .identifier("Reducer")
           }
         }) == true
       {
-        debugPrint(node.identifier.text)
-        return node.identifier.text
+        debugPrint(node.name.text)
+        return node.name.text
       }
       /// superclass of ReducerProtocol or Reducer
       if
@@ -91,7 +111,7 @@ extension SourceFileSyntax {
               || $0.tokenKind == .identifier("Reducer")
           }) == true
       {
-        return node.identifier.text
+        return node.name.text
       }
     }
     return nil
@@ -101,7 +121,7 @@ extension SourceFileSyntax {
   private func predicateChildReducerProtocol(_ node: Syntax) throws -> ([String], Bool)? {
     if
       let node = FunctionCallExprSyntax(node),
-      node.argumentList.contains(where: { syntax in syntax.label?.text == "action" })
+      node.arguments.contains(where: { syntax in syntax.label?.text == "action" })
     {
       if
         node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("Scope") }),
@@ -140,31 +160,31 @@ extension SourceFileSyntax {
   private func predicatePullbackCall(_ node: Syntax) throws -> (FunctionCallExprSyntax, String, String)? {
     if
       let node = FunctionCallExprSyntax(node),
-      let action = node.argumentList.first(where: { syntax in syntax.label?.text == "action" })?.expression
+      let action = node.arguments.first(where: { syntax in syntax.label?.text == "action" })?.expression
     {
-      let child = node.description.firstMatch(of: try Regex("\\s+(.+?)Reducer"))?[1].substring?.description
-      let parent = "\(action)".firstMatch(of: try Regex("\\/(.+?)Action.+"))?[1].substring?.description
-      switch (child, parent) {
-      case (.some("Any"), .some(let parent)):
-        if
-          let child = node.description
-            .firstMatch(of: try Regex("(?s)\\s+AnyReducer.*\\{.+?\\s+(\\w+?)\\("))?[1]
-            .substring?
-            .description,
-          node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback")
-        {
-          return (node, parent, child)
-        }
-        return .none
+      if
+        let child = node.description.firstMatch(of: try Regex("\\s+(.+?)Reducer"))?[1].substring?.description,
+        let parent = "\(action)".firstMatch(of: try Regex("\\/(.+?)Action.+"))?[1].substring?.description
+      {
+        switch (child, parent) {
+        case ("Any", let parent):
+          if
+            let child = node.description
+              .firstMatch(of: try Regex("(?s)\\s+AnyReducer.*\\{.+?\\s+(\\w+?)\\("))?[1]
+              .substring?
+              .description,
+            node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback")
+          {
+            return (node, parent, child)
+          }
+          return .none
 
-      case (.some(let child), .some(let parent)):
-        if node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback") {
-          return (node, parent, child)
+        case (let child, let parent):
+          if node.tokens(viewMode: .fixedUp).map(\.text).contains("pullback") {
+            return (node, parent, child)
+          }
+          return .none
         }
-        return .none
-
-      default:
-        return .none
       }
     }
     return .none
@@ -173,13 +193,13 @@ extension SourceFileSyntax {
   /// parse `enum` Action for feature name.
   private func predicateActionDecl(_ node: Syntax) throws -> String? {
     if let node = EnumDeclSyntax(node) {
-      if node.identifier.text == "Action" {
+      if node.name.text == "Action" {
         var parent = node.parent
         while parent != nil {
           if
             let ext = ExtensionDeclSyntax(parent),
             let name = ext.children(viewMode: .fixedUp)
-              .compactMap(SimpleTypeIdentifierSyntax.init)
+              .compactMap(IdentifierTypeSyntax.init)
               .first?
               .name
               .text
@@ -190,8 +210,8 @@ extension SourceFileSyntax {
           }
         }
         return .none
-      } else if node.identifier.text.hasSuffix("Action") {
-        return node.identifier.text.replacing("Action", with: "")
+      } else if node.name.text.hasSuffix("Action") {
+        return node.name.text.replacing("Action", with: "")
       } else {
         return .none
       }
@@ -213,5 +233,32 @@ extension SourceFileSyntax {
       stack.append(contentsOf: node.children(viewMode: .fixedUp))
     }
     return false
+  }
+
+  /// parse `enum` Action for feature name.
+  private func predicateIfLetDecl(_ node: Syntax) throws -> [String]? {
+    // let parent = "\(action)".firstMatch(of: try Regex("\\/(.+?)Action.+"))?[1].substring?.description {
+    if
+      let node = FunctionCallExprSyntax(node),
+      node.arguments.contains(where: { syntax in syntax.label?.text == "action" })
+    {
+
+      // ifLet can be in "method chaining"
+      // therefore find all reducer names that match and save in child
+      if
+        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") })
+      {
+        let children = node.description
+          .matches(of: try Regex("ifLet.+{\\s+(.+?)\\(\\)"))
+          .compactMap {
+            $0[1].substring?.description
+          }
+          .filter {
+            $0 != "EmptyReducer"
+          }
+        return children
+      }
+    }
+    return .none
   }
 }

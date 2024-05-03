@@ -12,7 +12,7 @@ let package = Package(
     .executable(name: "tca-diagram", targets: ["TCADiagram"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main"),
+    .package(url: "https://github.com/apple/swift-syntax.git", from: "510.0.1"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.2.0"),
   ],
   targets: [

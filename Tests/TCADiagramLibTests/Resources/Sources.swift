@@ -169,7 +169,7 @@ let reducerSampleSource: [String] = [
       .ifLet(\\.filter, action: /Action.filter) {
         SelfLessonDetailFilter()
       }
-      .ifLet(\\.selection, action: /Action.web) {
+      .ifLet(\\.$selection, action: \\.web) {
         SantaWeb()
       }
       .ifLet(\\SelfLessonDetail.State.selection, action: /SelfLessonDetail.Action.webView) {
@@ -260,6 +260,57 @@ let reducerMacroSampleSource: [String] = [
   }
   extension SelfLessonDetailFilter {
     public enum Action: Equatable {
+    }
+  }
+  """
+]
+
+let reducerWithExtensionSampleSource: [String] = [
+  """
+  public struct SelfLessonDetail: Reducer {
+    @Dependency(\\.environmentSelfLessonDetail) private var environment
+
+    public init() {}
+
+    public var body: some Reducer<State, Action> {
+      BindingReducer()
+      Scope(state: \\State.payment, action: /Action.payment) {
+        Payment()
+      }
+
+      Scope(state: \\.subState, action: .self) {
+        Scope(
+          state: /State.SubState.promotionWeb,
+          action: /Action.promotionWeb
+        ) {
+          DoubleScopeChild()
+        }
+      }
+
+      Reduce { state, action in
+        switch action {
+          case default:
+            return .none
+        }
+      }
+
+      .subFeatures1()
+    }
+  }
+  extension Reducer where State == SelfLessonDetail.State, Action == SelfLessonDetail.Action {
+    func subFeatures1() -> some ReducerOf<Self> {
+      .ifLet(\\.filter, action: \\.filter) {
+        SelfLessonDetailFilter()
+      }
+      .ifLet(\\.selection, action: \\.web) {
+        SantaWeb()
+      }
+      .ifLet(\\SelfLessonDetail.State.selection, action: /SelfLessonDetail.Action.webView) {
+        EmptyReducer()
+          .ifLet(\\Identified.value, action: .self) {
+            DoubleIfLetChild()
+          }
+      }
     }
   }
   """

@@ -1,10 +1,10 @@
 extension StringProtocol {
-  /// 제일 처음 문자를 대문자로 변경합니다.
+  /// uppercase first letter
   var firstUppercased: String {
     prefix(1).uppercased() + dropFirst()
   }
 
-  /// 문자열 앞에 4개의 공백을 추가합니다.
+  /// add 4 space indent as prefix
   var indent: String {
     "    \(self)"
   }

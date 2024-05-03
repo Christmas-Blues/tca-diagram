@@ -68,9 +68,9 @@ OPTIONS:
 VERSION=<version> make release
 ```
 
-## Limits
+## Todos
 - [x] ~~Scopes~~
 - [x] ~~optionals~~
 - [x] ~~ifLet~~
-- [ ] functions inside `extension Reducer {...}` isn't parsed.
-- [ ] case paths like `.ifLet(\.$destination, action: \.destination) {`
+- [x] ~~functions inside `extension Reducer {...}` isn't parsed.~~
+- [x] ~~case paths like `.ifLet(\.$destination, action: \.destination) {`~~
