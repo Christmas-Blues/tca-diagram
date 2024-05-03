@@ -1,6 +1,3 @@
-# ⚠️ DEPRECATED ⚠️
-This project is no longer maintained and will be continued from the original maintainer's repository https://github.com/tisohjung/tca-diagram
-
 # TCADiagram
 
 Create [mermaid](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams) md file from [swift-composable-architecture](https://github.com/pointfreeco/swift-composable-architecture) to show the full diagram of your feature relationships.
