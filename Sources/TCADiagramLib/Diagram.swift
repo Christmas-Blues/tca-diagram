@@ -65,8 +65,8 @@ public enum Diagram {
           )
         }
 
-        // 실제 정의된 Action에서 찾을 수 없으면 Reducer에서 찾은 이름을 그대로 사용합니다.
-        print("warning: Unknown feature: \(relation.child)")
+        // Action was not defined or found. Use Reducer name.
+        print("warning: Action was not found for feature \(relation.child), using reducer name")
         pullbackCount[relation.child] = (pullbackCount[relation.child] ?? 0) + 1
         return relation
       }
