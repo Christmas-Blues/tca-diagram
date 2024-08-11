@@ -66,7 +66,7 @@ public enum Diagram {
         }
 
         // Action was not defined or found. Use Reducer name.
-        print("warning: Action was not found for feature \(relation.child), using reducer name")
+        print("Using reducer name from \(relation.child) for counting pullbacks")
         pullbackCount[relation.child] = (pullbackCount[relation.child] ?? 0) + 1
         return relation
       }
