@@ -13,10 +13,10 @@ public enum Diagram {
     try sources.enumerated().forEach { index, source in
       print("Parsing... (\(index + 1)/\(sources.count))")
       let root: SourceFileSyntax = Parser.parse(source: source)
-      var reducer = root.description.firstMatch(of: try Regex("Reducer\n.*struct (.*) {"))?[1].substring?
+      var reducer = root.description.firstMatch(of: try Regex("Reducer\n.*struct (\\w+)"))?[1].substring?
         .description ?? ""
       if reducer == "" {
-        reducer = root.description.firstMatch(of: try Regex("\\s+struct (.+?): Reducer"))?[1].substring?
+        reducer = root.description.firstMatch(of: try Regex("\\s+struct (\\w+): Reducer"))?[1].substring?
           .description ?? ""
       }
       try root.travel(reducer: reducer, node: Syntax(root), actions: &actions, relations: &relations)
@@ -45,7 +45,9 @@ public enum Diagram {
     actions: Set<String>,
     pullbackCount: inout [String: Int]
   ) -> String {
-    relations
+    // Deduplicate relations (same parent-child pair may be detected multiple ways)
+    let uniqueRelations = Array(Set(relations))
+    return uniqueRelations
       .sorted(
         // order parent first, then child.
         using: [
