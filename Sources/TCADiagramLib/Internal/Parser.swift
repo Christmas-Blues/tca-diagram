@@ -8,7 +8,23 @@ extension SourceFileSyntax {
     relations: inout [Relation]
   ) throws {
     if let reducerProtocolParent = try predicateReducerProtocol(node) {
-      try travel(parent: reducerProtocolParent, node: node, actions: &actions, relations: &relations)
+      // Handle @Reducer enum with child features in cases
+      if let enumChildren = try predicateEnumReducerChildren(node) {
+        for child in enumChildren {
+          relations.append(
+            .init(
+              parent: reducerProtocolParent,
+              child: child.firstUppercased,
+              optional: false
+            )
+          )
+        }
+      }
+      // Traverse children of this reducer, not the node itself (to avoid re-detection)
+      for child in node.children(viewMode: .all) {
+        try travel(parent: reducerProtocolParent, node: child, actions: &actions, relations: &relations)
+      }
+      return
     }
 
     if let (node, parent, child) = try predicatePullbackCall(node) {
@@ -53,6 +69,34 @@ extension SourceFileSyntax {
     actions: inout Set<String>,
     relations: inout [Relation]
   ) throws {
+    // Check for nested @Reducer declarations (TCA 1.x)
+    if let reducerProtocolParent = try predicateReducerProtocol(node) {
+      // Add relation from containing reducer to this nested reducer
+      // Only if truly nested (inside a member block), not a file-level sibling
+      if node.parent?.as(MemberBlockItemSyntax.self) != nil,
+         parent != reducerProtocolParent {
+        relations.append(
+          .init(
+            parent: parent,
+            child: reducerProtocolParent.firstUppercased,
+            optional: false
+          )
+        )
+      }
+      // Handle @Reducer enum with child features in cases (always extract, nested or not)
+      if let enumChildren = try predicateEnumReducerChildren(node) {
+        for child in enumChildren {
+          relations.append(
+            .init(
+              parent: reducerProtocolParent,
+              child: child.firstUppercased,
+              optional: false
+            )
+          )
+        }
+      }
+    }
+
     if let children = try predicateIfLetDecl(node) {
       children.forEach { child in
         relations.append(
@@ -100,7 +144,6 @@ extension SourceFileSyntax {
           }
         }) == true
       {
-        debugPrint(node.name.text)
         return node.name.text
       }
       /// superclass of ReducerProtocol or Reducer
@@ -114,7 +157,64 @@ extension SourceFileSyntax {
         return node.name.text
       }
     }
+
+    // @Reducer class (TCA 1.x)
+    if let node = ClassDeclSyntax(node) {
+      if
+        node.attributes.contains(where: { element in
+          element.tokens(viewMode: .fixedUp).contains { el in
+            el.tokenKind == .identifier("Reducer")
+          }
+        }) == true
+      {
+        return node.name.text
+      }
+    }
+
+    // @Reducer enum (TCA 1.x)
+    if let node = EnumDeclSyntax(node) {
+      if
+        node.attributes.contains(where: { element in
+          element.tokens(viewMode: .fixedUp).contains { el in
+            el.tokenKind == .identifier("Reducer")
+          }
+        }) == true
+      {
+        return node.name.text
+      }
+    }
+
     return nil
+  }
+
+  /// Extract child features from @Reducer enum cases.
+  private func predicateEnumReducerChildren(_ node: Syntax) throws -> [String]? {
+    guard let enumNode = EnumDeclSyntax(node) else { return nil }
+
+    guard enumNode.attributes.contains(where: { element in
+      element.tokens(viewMode: .fixedUp).contains { el in
+        el.tokenKind == .identifier("Reducer")
+      }
+    }) else { return nil }
+
+    var children: [String] = []
+
+    for member in enumNode.memberBlock.members {
+      if let caseDecl = member.decl.as(EnumCaseDeclSyntax.self) {
+        for element in caseDecl.elements {
+          if let associatedValue = element.parameterClause {
+            for param in associatedValue.parameters {
+              let typeName = param.type.description.trimmingCharacters(in: .whitespaces)
+              if !typeName.isEmpty {
+                children.append(typeName)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return children.isEmpty ? nil : children
   }
 
   /// Get child feature name by looking for Scope or ifLet calls.
@@ -123,30 +223,48 @@ extension SourceFileSyntax {
       let node = FunctionCallExprSyntax(node),
       node.arguments.contains(where: { syntax in syntax.label?.text == "action" })
     {
-      if
-        node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("Scope") }),
-        let child = node.trailingClosure?.statements.first?.description
+      if node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("Scope") }) {
+        let closureContent = node.trailingClosure?.statements.first?.description ?? ""
+
+        // Match SomeFeature() pattern
+        if let child = closureContent
           .firstMatch(of: try Regex("\\s*(.+?)\\(\\)"))?[1]
           .substring?
           .description
-      {
-        return ([child], false)
+        {
+          return ([child], false)
+        }
+
+        // Match SomeFeature.body pattern (TCA 1.x enum reducers)
+        if let child = closureContent
+          .firstMatch(of: try Regex("\\s*(.+?)\\.body"))?[1]
+          .substring?
+          .description
+        {
+          return ([child], false)
+        }
       }
 
       // ifLet can be in "method chaining"
-      // therefore find all reducer names that match and save in child
       if
         node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") })
       {
-        let children = node.description
-          .matches(of: try Regex("ifLet.+{\\s+(.+?)\\(\\)"))
-          .compactMap {
-            $0[1].substring?.description
-          }
-          .filter {
-            $0 != "EmptyReducer"
-          }
-        return (children, true)
+        var children: [String] = []
+
+        // Match SomeFeature() pattern
+        children.append(contentsOf: node.description
+          .matches(of: try Regex("ifLet.+\\{\\s+(.+?)\\(\\)"))
+          .compactMap { $0[1].substring?.description }
+        )
+
+        // Match SomeFeature.body pattern (TCA 1.x enum reducers)
+        children.append(contentsOf: node.description
+          .matches(of: try Regex("ifLet.+\\{\\s+(.+?)\\.body"))
+          .compactMap { $0[1].substring?.description }
+        )
+
+        children = children.filter { $0 != "EmptyReducer" }
+        return children.isEmpty ? nil : (children, true)
       }
     }
     return .none
@@ -237,26 +355,29 @@ extension SourceFileSyntax {
 
   /// parse `enum` Action for feature name.
   private func predicateIfLetDecl(_ node: Syntax) throws -> [String]? {
-    // let parent = "\(action)".firstMatch(of: try Regex("\\/(.+?)Action.+"))?[1].substring?.description {
     if
       let node = FunctionCallExprSyntax(node),
       node.arguments.contains(where: { syntax in syntax.label?.text == "action" })
     {
-
-      // ifLet can be in "method chaining"
-      // therefore find all reducer names that match and save in child
       if
         node.tokens(viewMode: .fixedUp).contains(where: { $0.tokenKind == .identifier("ifLet") })
       {
-        let children = node.description
-          .matches(of: try Regex("ifLet.+{\\s+(.+?)\\(\\)"))
-          .compactMap {
-            $0[1].substring?.description
-          }
-          .filter {
-            $0 != "EmptyReducer"
-          }
-        return children
+        var children: [String] = []
+
+        // Match SomeFeature() pattern
+        children.append(contentsOf: node.description
+          .matches(of: try Regex("ifLet.+\\{\\s+(.+?)\\(\\)"))
+          .compactMap { $0[1].substring?.description }
+        )
+
+        // Match SomeFeature.body pattern (TCA 1.x enum reducers)
+        children.append(contentsOf: node.description
+          .matches(of: try Regex("ifLet.+\\{\\s+(.+?)\\.body"))
+          .compactMap { $0[1].substring?.description }
+        )
+
+        children = children.filter { $0 != "EmptyReducer" }
+        return children.isEmpty ? nil : children
       }
     }
     return .none

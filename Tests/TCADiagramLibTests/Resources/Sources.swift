@@ -1,3 +1,187 @@
+// TCA 1.x: @Reducer class with @Reducer enum and .body pattern
+let reducerClassSampleSource: [String] = [
+  """
+  @Reducer
+  class RootFeature {
+    @ObservableState
+    struct State: Equatable {
+      var tab: TabSelection.State
+      var navigation = NavigationFeature.State()
+    }
+
+    enum Action {
+      case tab(TabSelection.Action)
+      case navigation(NavigationFeature.Action)
+    }
+
+    @Reducer(state: .equatable)
+    enum TabSelection {
+      case home(HomeFeature)
+      case profile(ProfileFeature)
+      case search(SearchFeature)
+    }
+
+    var body: some ReducerOf<RootFeature> {
+      Scope(state: \\.tab, action: \\.tab) { TabSelection.body }
+      Scope(state: \\.navigation, action: \\.navigation) { NavigationFeature() }
+
+      Reduce { state, action in
+        return .none
+      }
+    }
+  }
+  """,
+  """
+  extension RootFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension HomeFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension ProfileFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension SearchFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension NavigationFeature {
+    public enum Action: Equatable {
+    }
+  }
+  """
+]
+
+// TCA 1.x: Nested @Reducer enum with implicit reducer (no trailing closure in ifLet)
+let nestedReducerEnumSampleSource: [String] = [
+  """
+  @Reducer
+  struct ContainerFeature {
+    @ObservableState
+    struct State: Equatable {
+      @Presents var destination: Destination.State?
+    }
+
+    enum Action {
+      case destination(PresentationAction<Destination.Action>)
+    }
+
+    @Reducer(state: .equatable)
+    enum Destination {
+      case detail(DetailFeature)
+      case settings(SettingsFeature)
+    }
+
+    var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        return .none
+      }
+      .ifLet(\\.$destination, action: \\.destination)
+    }
+  }
+  """,
+  """
+  extension ContainerFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension DetailFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension SettingsFeature {
+    public enum Action: Equatable {
+    }
+  }
+  """
+]
+
+// TCA 1.x: @Reducer struct conforming to Equatable (regression test for colon in name)
+let reducerWithEquatableConformanceSampleSource: [String] = [
+  """
+  @Reducer
+  struct FormFeature: Equatable {
+    @ObservableState
+    struct State: Equatable {
+      @Presents var confirmation: ConfirmationFeature.State?
+    }
+
+    enum Action {
+      case confirmation(PresentationAction<ConfirmationFeature.Action>)
+    }
+
+    var body: some ReducerOf<FormFeature> {
+      Reduce { state, action in
+        return .none
+      }
+      .ifLet(\\.$confirmation, action: \\.confirmation) {
+        ConfirmationFeature()
+      }
+    }
+  }
+  """,
+  """
+  extension FormFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension ConfirmationFeature {
+    public enum Action: Equatable {
+    }
+  }
+  """
+]
+
+// TCA 1.x: @Reducer enum (standalone)
+let reducerEnumSampleSource: [String] = [
+  """
+  @Reducer
+  enum Sheet {
+    case edit(EditFeature)
+    case preview(PreviewFeature)
+  }
+
+  @Reducer
+  struct ListFeature {
+    @ObservableState
+    struct State {
+      @Presents var sheet: Sheet.State?
+    }
+
+    enum Action {
+      case sheet(PresentationAction<Sheet.Action>)
+    }
+
+    var body: some ReducerOf<ListFeature> {
+      Reduce { state, action in
+        return .none
+      }
+      .ifLet(\\.$sheet, action: \\.sheet) {
+        Sheet.body
+      }
+    }
+  }
+  """,
+  """
+  extension ListFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension EditFeature {
+    public enum Action: Equatable {
+    }
+  }
+  extension PreviewFeature {
+    public enum Action: Equatable {
+    }
+  }
+  """
+]
+
+// TCA 0.x: pullback-based reducers
 let sources: [String] = [
   """
   let selfLessonDetailReducer = SelfLessonDetailReducer

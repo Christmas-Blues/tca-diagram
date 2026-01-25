@@ -1,4 +1,4 @@
-struct Relation {
+struct Relation: Hashable {
   let parent: String
   let child: String
   let optional: Bool
